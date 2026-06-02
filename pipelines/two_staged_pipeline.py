@@ -15,8 +15,13 @@ class TwoStagedPipeline(AbstractPipeline):
     ) -> None:
         self.__detector = detector
         self.__segmenter = segmenter
+        self.__colors = np.clip(segmenter.colors_bgr * 255, 0, 255) \
+            .astype(np.uint8)
 
-    def process_frame(self, frame: np.ndarray) -> np.ndarray:
+    def process_frame(
+        self,
+        frame: np.ndarray
+    ) -> tuple[np.ndarray, list[dict]]:
         """
         Обработать кадр
 
@@ -38,8 +43,10 @@ class TwoStagedPipeline(AbstractPipeline):
             if self.__is_target_metaclass(class_id):
                 score_idx_pairs.append((det_scores[0, i], i))
 
+        detected_objects = []
+
         if not score_idx_pairs:
-            return np.zeros_like(frame)
+            return np.zeros_like(frame), detected_objects
 
         score_idx_pairs.sort()
         for score, j in score_idx_pairs:
@@ -56,7 +63,7 @@ class TwoStagedPipeline(AbstractPipeline):
                 valid_pairs.append((score, j))
 
         if not valid_crops:
-            return np.zeros_like(frame)
+            return np.zeros_like(frame), detected_objects
 
         X = np.stack(valid_crops, axis=0)
         segmenter_outputs = self.__segmenter(X)
@@ -84,7 +91,24 @@ class TwoStagedPipeline(AbstractPipeline):
             indices = temp > 1e-6
             mask[indices] = temp[indices]
 
-        return np.clip(mask * 255, 0, 255).astype(np.uint8)
+            obj_crop_mask = np.any(
+                a=resized_mask[:target_h, :target_w] > 1e-6,
+                axis=-1
+            )
+
+            non_bg_preds = preds[preds > 0]
+            if non_bg_preds.size > 0:
+                active_class_id = int(np.bincount(non_bg_preds).argmax())
+            else:
+                active_class_id = 0
+
+            detected_objects.append({
+                "bbox": [x1, y1, x2, y2],
+                "color": self.__colors[active_class_id],
+                "crop_mask": obj_crop_mask
+            })
+
+        return np.clip(mask * 255, 0, 255).astype(np.uint8), detected_objects
 
     def __is_target_metaclass(self, class_id: int) -> bool:
         return class_id in self.__detector.classes and \

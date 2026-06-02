@@ -3,7 +3,7 @@ import json
 from engines.dummy_engine import DummyEngine
 from tasks.deeplab_segmenter import DeepLabSegmenter
 from pipelines.pipeline_factory import PipelineFactory
-from tracking.simple_smoothing import SimpleSmoothing
+from tracking.optical_flow import OpticalFlow
 from windows.info_window import InfoWindow
 from utils.fps_counter import FpsCounter
 from utils.img_utils import ImgUtils
@@ -16,7 +16,6 @@ class App:
 
         device = config.get("device", "CPU")
         reference_seg = DeepLabSegmenter(DummyEngine())
-        smooth_factor = config.get("smooth_factor", 0.6)
 
         self.__alpha = config["alpha"]
         self.__frame_skip = config.get("frame_skip", 1)
@@ -42,7 +41,7 @@ class App:
         ])
         self.__mask = None
         self.__frame_idx = 0
-        self.__tracker = SimpleSmoothing(smooth_factor)
+        self.__tracker = OpticalFlow()
 
     def main_loop(self) -> None:
         while self.__cap and self.__cap.isOpened():
@@ -51,12 +50,12 @@ class App:
                 break
 
             if self.__need_process():
-                new_mask = self.__pipeline.process_frame(frame)
+                self.__mask, tracked_objects = \
+                    self.__pipeline.process_frame(frame)
 
-                if self.__mask is None:
-                    self.__mask = new_mask
-                else:
-                    self.__mask = self.__tracker.apply(self.__mask, new_mask)
+                self.__tracker.update_tracked_objects(tracked_objects)
+            else:
+                self.__tracker.apply(frame)
 
             masked_frame = ImgUtils.mix(frame, self.__mask, self.__alpha)
 

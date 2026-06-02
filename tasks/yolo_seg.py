@@ -34,7 +34,7 @@ class YOLOSeg:
         self,
         preds: list[np.ndarray],
         orig_shape: tuple[int, int]
-    ) -> np.ndarray:
+    ) -> tuple[np.ndarray, list[dict]]:
         """
         Конвертация прототипов в маски сегментации
 
@@ -55,7 +55,7 @@ class YOLOSeg:
 
         keep = confidences > self.__conf_threshold
         if not np.any(keep):
-            return np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
+            return np.zeros((orig_h, orig_w, 3), dtype=np.uint8), []
 
         boxes, class_ids, mask_coefficients, confidences = \
             boxes[keep], class_ids[keep], \
@@ -74,8 +74,10 @@ class YOLOSeg:
         )
 
         final_mask = np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
+        detected_objects = []
+
         if len(indices) == 0:
-            return final_mask
+            return final_mask, []
 
         indices = indices.flatten()
         proto_flat = proto.reshape(32, -1)
@@ -102,9 +104,18 @@ class YOLOSeg:
 
             # сдвиг индекса на 1, так как 0 - background
             color_idx = (class_ids[idx] + 1) % len(self.__colors)
-            final_mask[seg_mask] = self.__colors[color_idx]
+            color = self.__colors[color_idx]
+            final_mask[seg_mask] = color
 
-        return final_mask
+            obj_crop_mask = seg_mask[by1:by2, bx1:bx2]
+
+            detected_objects.append({
+                "bbox": [bx1, by1, bx2, by2],
+                "color": color,
+                "crop_mask": obj_crop_mask
+            })
+
+        return final_mask, detected_objects
 
     def __call__(self, frame: np.ndarray) -> np.ndarray:
         """

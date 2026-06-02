@@ -9,7 +9,10 @@ class OneStagedPipeline(AbstractPipeline):
     def __init__(self, yolo_seg: YOLOSeg) -> None:
         self.__yolo_seg = yolo_seg
 
-    def process_frame(self, frame: np.ndarray) -> np.ndarray:
+    def process_frame(
+        self,
+        frame: np.ndarray
+    ) -> tuple[np.ndarray, list[dict]]:
         """
         Обработать кадр
 
