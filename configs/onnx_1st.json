@@ -6,6 +6,7 @@
   "alpha": 0.6,
   "frame_skip": 2,
   "conf_threshold": 0.45,
+  "smooth_factor": 0.6,
   "models": {
     "yolo_seg": "models/onnx/yolo11n_seg.onnx",
     "yolo_detector": "models/onnx/yolov6n.onnx",

@@ -3,6 +3,7 @@ import json
 from engines.dummy_engine import DummyEngine
 from tasks.deeplab_segmenter import DeepLabSegmenter
 from pipelines.pipeline_factory import PipelineFactory
+from tracking.simple_smoothing import SimpleSmoothing
 from windows.info_window import InfoWindow
 from utils.fps_counter import FpsCounter
 from utils.img_utils import ImgUtils
@@ -15,6 +16,7 @@ class App:
 
         device = config.get("device", "CPU")
         reference_seg = DeepLabSegmenter(DummyEngine())
+        smooth_factor = config.get("smooth_factor", 0.6)
 
         self.__alpha = config["alpha"]
         self.__frame_skip = config.get("frame_skip", 1)
@@ -27,6 +29,7 @@ class App:
             classes=reference_seg.classes,
             colors_rgb=reference_seg.colors_rgb
         )
+        self.__smooth_factor = config.get("smooth_factor", 0.6)
         self.__cap = cv2.VideoCapture(config["camera_id"])
         self.__backend = config.get("backend", "openvino")
         self.__fps_counter = FpsCounter()
@@ -37,8 +40,9 @@ class App:
             self.__backend,
             f"press '{self.__shutdown_key}' to exit"
         ])
-        self.__frame_idx = 0
         self.__mask = None
+        self.__frame_idx = 0
+        self.__tracker = SimpleSmoothing(smooth_factor)
 
     def main_loop(self) -> None:
         while self.__cap and self.__cap.isOpened():
@@ -46,8 +50,13 @@ class App:
             if not ret:
                 break
 
-            if self.__need_optimize():
-                self.__mask = self.__pipeline.process_frame(frame)
+            if self.__need_process():
+                new_mask = self.__pipeline.process_frame(frame)
+
+                if self.__mask is None:
+                    self.__mask = new_mask
+                else:
+                    self.__mask = self.__tracker.apply(self.__mask, new_mask)
 
             masked_frame = ImgUtils.mix(frame, self.__mask, self.__alpha)
 
@@ -66,6 +75,6 @@ class App:
             self.__cap.release()
             cv2.destroyAllWindows()
 
-    def __need_optimize(self) -> bool:
+    def __need_process(self) -> bool:
         return self.__frame_idx % self.__frame_skip == 0 or \
             self.__mask is None
