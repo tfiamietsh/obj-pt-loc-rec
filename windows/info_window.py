@@ -6,13 +6,13 @@ class InfoWindow:
     def __init__(
         self,
         classes: list[str],
-        colors_rgb: np.ndarray
+        colors_bgr: np.ndarray
     ) -> None:
-        self.__window = np.zeros((264, 192, 3), np.float32)
+        self.__window = np.zeros((284, 192, 3), np.float32)
 
         for i, class_name in enumerate(classes):
             text_color = (1., 1., 1.)
-            box_color = tuple(map(float, colors_rgb[i]))
+            box_color = tuple(map(float, colors_bgr[i]))
 
             self.__put_text(
                 text=class_name,

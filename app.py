@@ -26,7 +26,7 @@ class App:
         )
         self.__info_window = InfoWindow(
             classes=reference_seg.classes,
-            colors_rgb=reference_seg.colors_rgb
+            colors_bgr=reference_seg.colors_bgr
         )
         self.__smooth_factor = config.get("smooth_factor", 0.6)
         self.__cap = cv2.VideoCapture(config["camera_id"])
