@@ -8,8 +8,8 @@
   "conf_threshold": 0.45,
   "smooth_factor": 0.6,
   "models": {
-    "yolo_seg": "models/vino/yolo11n_seg/yolo11n_seg.xml",
-    "yolo_detector": "models/vino/yolov6n/yolov6n.xml",
-    "deeplab_segmenter": "models/vino/deeplabv3plus/deeplabv3plus.xml"
+    "yolo_seg": "models/vino/yolo11n_seg/yolo11n_seg_q.xml",
+    "yolo_detector": "models/vino/yolov6n/yolov6n_q.xml",
+    "deeplab_segmenter": "models/vino/deeplabv3plus/deeplabv3plus_q.xml"
   }
 }
