@@ -49,13 +49,8 @@ class App:
             if not ret:
                 break
 
-            if self.__need_process():
-                self.__mask, tracked_objects = \
-                    self.__pipeline.process_frame(frame)
-
-                self.__tracker.update_tracked_objects(tracked_objects)
-            else:
-                self.__tracker.apply(frame)
+            self.__mask, _ = \
+                self.__pipeline.process_frame(frame)
 
             masked_frame = ImgUtils.mix(frame, self.__mask, self.__alpha)
 
@@ -73,7 +68,3 @@ class App:
         if self.__cap is not None:
             self.__cap.release()
             cv2.destroyAllWindows()
-
-    def __need_process(self) -> bool:
-        return self.__frame_idx % self.__frame_skip == 0 or \
-            self.__mask is None
