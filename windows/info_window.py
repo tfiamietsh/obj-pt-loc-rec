@@ -1,56 +1,58 @@
 import cv2
 import numpy as np
+from windows.base_window import BaseWindow
 
 
-class InfoWindow:
+class InfoWindow(BaseWindow):
     def __init__(
         self,
         classes: list[str],
         colors_bgr: np.ndarray
     ) -> None:
-        self.__window = np.zeros((284, 192, 3), np.float32)
+        super().__init__("Info")
 
+        backbuffer = np.zeros((284, 192, 3), np.float32)
         for i, class_name in enumerate(classes):
             text_color = (1., 1., 1.)
             box_color = tuple(map(float, colors_bgr[i]))
 
-            self.__put_text(
+            backbuffer = self.__put_text(
                 text=class_name,
+                buffer=backbuffer,
                 pos=(4, 36 + 20 * i),
                 color=text_color
             )
-            self.__window = cv2.rectangle(
-                img=self.__window,
+            backbuffer = cv2.rectangle(
+                img=backbuffer,
                 pt1=(120, 25 + 20 * i),
                 pt2=(185, 36 + 20 * i),
                 color=box_color,
                 thickness=-1
             )
 
+        self._set_backbuffer(backbuffer)
+
     def set_fps(self, fps: float) -> None:
-        info_display = self.__window.copy()
-        info_display[:18, :140] = 0.0
+        self._backbuffer[:18, :140] = 0.0
 
-        cv2.putText(
-            img=info_display,
-            text=f"FPS: {fps: .2f}",
-            org=(4, 16),
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=0.5,
-            color=(1., 1., 1.),
-            thickness=1,
-            lineType=cv2.LINE_AA
+        self._set_backbuffer(
+            self.__put_text(
+                text=f"FPS: {fps: .2f}",
+                buffer=self._backbuffer,
+                pos=(4, 16),
+                color=(1., 1., 1.)
+            )
         )
-        cv2.imshow("Info", info_display)
 
+    @staticmethod
     def __put_text(
-        self,
         text: str,
+        buffer: np.ndarray,
         pos: tuple[int, int],
         color: tuple[float, float, float]
-    ) -> None:
-        self.__window = cv2.putText(
-            img=self.__window,
+    ) -> np.ndarray:
+        return cv2.putText(
+            img=buffer,
             text=text,
             org=pos,
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
