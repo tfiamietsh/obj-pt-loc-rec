@@ -11,7 +11,7 @@ class InfoWindow(BaseWindow):
     ) -> None:
         super().__init__("Info")
 
-        backbuffer = np.zeros((284, 192, 3), np.float32)
+        backbuffer = np.zeros((264, 192, 3), np.float32)
         for i, class_name in enumerate(classes):
             text_color = (1., 1., 1.)
             box_color = tuple(map(float, colors_bgr[i]))
@@ -19,30 +19,18 @@ class InfoWindow(BaseWindow):
             backbuffer = self.__put_text(
                 text=class_name,
                 buffer=backbuffer,
-                pos=(4, 36 + 20 * i),
+                pos=(4, 16 + 20 * i),
                 color=text_color
             )
             backbuffer = cv2.rectangle(
                 img=backbuffer,
-                pt1=(120, 25 + 20 * i),
-                pt2=(185, 36 + 20 * i),
+                pt1=(120, 5 + 20 * i),
+                pt2=(185, 16 + 20 * i),
                 color=box_color,
                 thickness=-1
             )
 
         self._set_backbuffer(backbuffer)
-
-    def set_fps(self, fps: float) -> None:
-        self._backbuffer[:18, :140] = 0.0
-
-        self._set_backbuffer(
-            self.__put_text(
-                text=f"FPS: {fps: .2f}",
-                buffer=self._backbuffer,
-                pos=(4, 16),
-                color=(1., 1., 1.)
-            )
-        )
 
     @staticmethod
     def __put_text(
