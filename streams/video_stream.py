@@ -1,4 +1,5 @@
 import cv2
+import time
 import threading
 import numpy as np
 
@@ -9,12 +10,6 @@ class VideoStream:
         capture = cv2.VideoCapture(src, backend)
 
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 2)
-        if isinstance(src, int):
-            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
-            capture.set(cv2.CAP_PROP_FPS, 60)
-            capture.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 
         _, self.__frame = capture.read()
         self.__stopped = False
@@ -40,3 +35,4 @@ class VideoStream:
 
                 if not status:
                     self.__stopped = True
+            time.sleep(0.005)
