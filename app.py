@@ -1,13 +1,14 @@
 import cv2
 import json
 import numpy as np
+from utils.profiler import Profiler
+from utils.img_utils import ImgUtils
+from windows.viewport import Viewport
+from windows.info_window import InfoWindow
 from engines.dummy_engine import DummyEngine
 from tasks.deeplab_segmenter import DeepLabSegmenter
-from pipelines.pipeline_factory import PipelineFactory
-from tracking.optical_flow import OpticalFlow
-from windows.info_window import InfoWindow
-from windows.viewport import Viewport
-from utils.img_utils import ImgUtils
+from streams.segmentation_stream import SegmentationStream
+from tracking.historical_object_tracker import HistoricalObjectTracker
 
 
 class App:
@@ -15,58 +16,59 @@ class App:
         with open(config_path, "r") as file:
             config = json.load(file)
 
-        device = config.get("device", "CPU")
         reference_seg = DeepLabSegmenter(DummyEngine())
 
         self.__alpha = config["alpha"]
-        self.__frame_skip = config.get("frame_skip", 1)
-        self.__pipeline = PipelineFactory.build_pipeline(
-            config=config,
-            colors_bgr=reference_seg.colors_bgr,
-            device=device
-        )
         self.__info_window = InfoWindow(
             classes=reference_seg.classes,
             colors_bgr=reference_seg.colors_bgr
         )
-        self.__smooth_factor = config.get("smooth_factor", 0.6)
-        self.__backend = config.get("backend", "openvino")
-        self.__shutdown_key = "q"
-        self.__viewport = Viewport(
+        self.__segmentation_stream = SegmentationStream(
             config=config,
-            name_prefix=" | ".join([
-                "Viewport",
-                f"{self.__pipeline}",
-                self.__backend
-            ]),
-            name_suffix=f"press '{self.__shutdown_key}' to exit"
+            colors_bgr=reference_seg.colors_bgr
         )
+        self.__backend = config.get("backend", "openvino")
+        self.__colors = np.clip(reference_seg.colors_bgr * 255, 0, 255).astype(np.uint8)
+        self.__shutdown_key = "q"
+        self.__viewport = Viewport(config)
         self.__viewport.set_prerender_fn(self.__process_frame)
-        self.__tracker = OpticalFlow()
-        self.__frame_idx = 0
-        self.__mask = None
+        self.__tracker = HistoricalObjectTracker()
+        self.__last_detected_objects = None
 
     def __process_frame(self, frame: np.ndarray):
-        self.__mask, _ = \
-            self.__pipeline.process_frame(frame)
+        Profiler.time("App.__process_frame.__segmentation_stream.process_frame")
+        mask, detected_objects = self.__segmentation_stream.process_frame(frame)
 
-        return ImgUtils.mix(frame, self.__mask, self.__alpha)
+        if detected_objects is not None:
+            self.__last_detected_objects = detected_objects
+
+        Profiler.time("App.__process_frame.__tracker.process")
+        mask, objects = self.__tracker.process(mask, self.__last_detected_objects)
+        self.__last_detected_objects = objects
+
+        Profiler.time("App.__process_frame.ImgUtils.mix")
+        masked_frame = ImgUtils.mix(frame, self.__colors[mask], self.__alpha)
+        Profiler.time()
+
+        return masked_frame
 
     def main_loop(self) -> None:
+        self.__info_window.render()
+        self.__segmentation_stream.start()
+
         while True:
+            Profiler.time("App.main_loop.__viewport.read_frame")
             if not self.__viewport.read_frame():
                 break
 
-            self.__viewport.render(self.__process_frame)
-
-            self.__info_window.set_fps(self.__viewport.get_fps())
-            self.__info_window.render()
+            Profiler.time("App.main_loop.__viewport.render")
+            self.__viewport.render()
+            Profiler.time()
 
             if cv2.waitKey(1) & 0xFF == ord(self.__shutdown_key):
                 break
 
-            self.__frame_idx += 1
-
     def shutdown(self) -> None:
+        self.__segmentation_stream.stop()
         self.__viewport.close()
         cv2.destroyAllWindows()
