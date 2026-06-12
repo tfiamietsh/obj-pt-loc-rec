@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
+from utils.profiler import Profiler
 from engines.abstract_engine import AbstractEngine
 
 
 class YOLOSeg:
-    """Instance-сегментация через YOLO-seg"""
+    """Сегментация экземпляров через YOLO-seg"""
 
     def __init__(
         self,
@@ -55,7 +56,7 @@ class YOLOSeg:
 
         keep = confidences > self.__conf_threshold
         if not np.any(keep):
-            return np.zeros((orig_h, orig_w, 3), dtype=np.uint8), []
+            return np.zeros((orig_h, orig_w), dtype=np.uint8), []
 
         boxes, class_ids, mask_coefficients, confidences = \
             boxes[keep], class_ids[keep], \
@@ -73,7 +74,7 @@ class YOLOSeg:
             nms_threshold=0.45
         )
 
-        final_mask = np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
+        final_mask = np.zeros((orig_h, orig_w), dtype=np.uint8)
         detected_objects = []
 
         if len(indices) == 0:
@@ -84,7 +85,7 @@ class YOLOSeg:
         coeffs = mask_coefficients[indices]
 
         masks = 1 / (1 + np.exp(-np.matmul(coeffs, proto_flat)))
-        masks = masks.reshape(len(indices), 160, 160)
+        masks = masks.reshape(len(indices), proto.shape[1], proto.shape[2])
 
         for i, idx in enumerate(indices):
             seg_mask = cv2.resize(
@@ -105,14 +106,15 @@ class YOLOSeg:
             # сдвиг индекса на 1, так как 0 - background
             color_idx = (class_ids[idx] + 1) % len(self.__colors)
             color = self.__colors[color_idx]
-            final_mask[seg_mask] = color
+            final_mask[seg_mask] = class_ids[idx] + 1
 
-            obj_crop_mask = seg_mask[by1:by2, bx1:bx2]
+            obj_crop_mask = final_mask[by1:by2, bx1:bx2]
 
             detected_objects.append({
                 "bbox": [bx1, by1, bx2, by2],
                 "color": color,
-                "crop_mask": obj_crop_mask
+                "crop_mask": obj_crop_mask,
+                "class_id": class_ids[idx]
             })
 
         return final_mask, detected_objects
@@ -122,9 +124,15 @@ class YOLOSeg:
         Запуск модели YOLO-seg
 
         :param frame: ненормализованный кадр uint8
-        :return: маска сегментации uint8
+        :return: маска сегментации uint8 и информация об объектах
         """
+        Profiler.time("YOLOSeg.__call__.__preprocess")
         input_tensor, orig_shape = self.__preprocess(frame)
+        Profiler.time("YOLOSeg.__call__.__engine.__call__")
         preds = self.__engine(input_tensor)
 
-        return self.__postprocess(preds, orig_shape)
+        Profiler.time("YOLOSeg.__call__.__postprocess")
+        mask, detected_objects = self.__postprocess(preds, orig_shape)
+
+        Profiler.time()
+        return mask, detected_objects
