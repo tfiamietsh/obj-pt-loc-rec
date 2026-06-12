@@ -2,8 +2,8 @@ import numpy as np
 from typing import Any
 from tasks.yolo_seg import YOLOSeg
 from tasks.yolo_detector import YOLODetector
-from tasks.deeplab_segmenter import DeepLabSegmenter
 from engines.engine_factory import EngineFactory
+from tasks.deeplab_segmenter import DeepLabSegmenter
 from pipelines.abstract_pipeline import AbstractPipeline
 from pipelines.one_staged_pipeline import OneStagedPipeline
 from pipelines.two_staged_pipeline import TwoStagedPipeline
@@ -30,7 +30,7 @@ class PipelineFactory:
             yolo_task = YOLOSeg(
                 engine=engine,
                 colors_bgr=colors_bgr,
-                conf_threshold=config.get("conf_threshold", 0.5)
+                conf_threshold=config.get("conf_threshold", 0.3)
             )
 
             return OneStagedPipeline(yolo_task)
