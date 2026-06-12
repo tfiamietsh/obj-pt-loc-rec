@@ -3,7 +3,7 @@ from collections import deque
 
 
 class FpsCounter:
-    def __init__(self, avg_of: int = 5) -> None:
+    def __init__(self, avg_of: int = 7) -> None:
         self.__elapsed_times = deque(maxlen=avg_of)
         self.__prev_time = time()
         self.__fps = 0.0

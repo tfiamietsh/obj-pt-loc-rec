@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 
 
@@ -9,16 +8,11 @@ class ImgUtils:
         img2: np.ndarray,
         alpha: float
     ) -> np.ndarray:
+        mask = np.any(img2 > 0, axis=2)
         result = img1.copy()
-        non_zero = np.any(img2 > 0, axis=-1)
 
-        if np.any(non_zero):
-            result[non_zero] = cv2.addWeighted(
-                src1=img1,
-                alpha=alpha,
-                src2=img2,
-                beta=1.0 - alpha,
-                gamma=0
-            )[non_zero]
+        if mask.any():
+            result[mask] = (img1[mask].astype(np.float32) * alpha +
+                            img2[mask].astype(np.float32) * (1.0 - alpha)).astype(np.uint8)
 
         return result
