@@ -4,7 +4,7 @@ torch==2.8.0
 torchvision==0.23.0
 ultralytics==8.4.56
 onnxruntime==1.17.0
-openvino==26.1.0
+openvino==2026.1.0
 opencv-python==4.11.0.86
 matplotlib==3.10.9
 nncf==3.1.0
