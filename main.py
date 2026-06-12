@@ -1,4 +1,5 @@
 from app import App
+from utils.profiler import Profiler
 
 
 if __name__ == "__main__":
@@ -7,3 +8,5 @@ if __name__ == "__main__":
     app = App(config_path)
     app.main_loop()
     app.shutdown()
+
+    Profiler.summary()
